@@ -157,7 +157,10 @@ def _from_k8s_quantities(q: dict) -> dict:
     if "memory" in q:
         out["MEMORY"] = q["memory"]
     for k, v in q.items():
-        if k.endswith("/gpu"):
+        # k8s extended name ("nvidia.com/gpu", MIG profiles), and the bare
+        # "gpu" that flytekit writes into a pod spec for plugin tasks
+        kl = k.lower()
+        if kl == "gpu" or kl.endswith("/gpu") or kl.startswith("nvidia.com/mig-"):
             out["GPU"] = v
     return out
 
@@ -194,7 +197,7 @@ def template_resources(tmpl: dict) -> dict:
             if mem not in (None, ""):
                 tot_mem += parse_mem_gib(mem)
                 any_mem = True
-            tot_gpu += float(req.get("GPU", lim.get("GPU", 0)) or 0)
+            tot_gpu += float(req.get("GPU") or lim.get("GPU") or 0)
         out["cpu"] = tot_cpu if any_cpu else None
         out["mem"] = tot_mem if any_mem else None
         out["gpu"] = tot_gpu
